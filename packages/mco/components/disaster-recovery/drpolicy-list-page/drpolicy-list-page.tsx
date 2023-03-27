@@ -8,6 +8,7 @@ import {
 } from '@odf/shared/modals/modalLauncher';
 import { useCustomTranslation } from '@odf/shared/useCustomTranslationHook';
 import { referenceForModel } from '@odf/shared/utils';
+import { useFlag } from '@openshift-console/dynamic-plugin-sdk';
 import {
   ListPageBody,
   ListPageCreateLink,
@@ -22,6 +23,7 @@ import {
 } from '@openshift-console/dynamic-plugin-sdk';
 import { Trans } from 'react-i18next';
 import { useHistory } from 'react-router';
+import { ACM_OBSERVABILITY_FLAG } from '../../../constants';
 import { HUB_CLUSTER_NAME } from '../../../constants';
 import {
   ApplicationRefKind,
@@ -40,11 +42,6 @@ import {
   tableColumnInfo,
 } from './helper';
 import './drpolicy-list-page.scss';
-
-export const DATA_POLICIES_PATH = '/multicloud/data-services/data-policies';
-export const DR_POLICY_CREATE_PATH = `${DATA_POLICIES_PATH}/${referenceForModel(
-  DRPolicyModel
-)}/~new`;
 
 const DRPolicyRow: React.FC<RowProps<DRPolicyKind, RowData>> = ({
   obj,
@@ -144,6 +141,15 @@ export const DRPolicyListPage: React.FC = () => {
     useModalLauncher(DRPolicyActions);
   const [isModalOpen, setConnectedAppsModalOpen] = React.useState(false);
   const [linkedApps, setLinkedApps] = React.useState<ApplicationRefKind[]>([]);
+
+  const acmMCOFlag = useFlag(ACM_OBSERVABILITY_FLAG);
+  const DATA_POLICIES_PATH = acmMCOFlag
+    ? '/multicloud/data-services/data-policies/recovery'
+    : '/multicloud/data-services/data-policies';
+  const DR_POLICY_CREATE_PATH = `${DATA_POLICIES_PATH}/${referenceForModel(
+    DRPolicyModel
+  )}/~new`;
+
   const [canDeleteDRPolicy] = useAccessReview(
     {
       group: DRPolicyModel?.apiGroup,
