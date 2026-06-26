@@ -22,7 +22,8 @@ const MCOStyleAppGroup: React.FunctionComponent<MCOStyleAppGroupProps> = ({
   element,
   ...rest
 }) => {
-  const { clusters, onOpenPairModal } = React.useContext(TopologyDataContext);
+  const { clusters, onOpenPairModal, isClusterPairingBlocked } =
+    React.useContext(TopologyDataContext);
   const data = element.getData();
 
   // Get current cluster name
@@ -87,6 +88,10 @@ const MCOStyleAppGroup: React.FunctionComponent<MCOStyleAppGroupProps> = ({
           handlers={handlers}
           otherClusters={otherClusters}
           rootMenuId="cluster-menu-root"
+          isPairingBlocked={(targetClusterName) =>
+            isClusterPairingBlocked?.(currentClusterName, targetClusterName) ??
+            false
+          }
         />
       )}
     </>

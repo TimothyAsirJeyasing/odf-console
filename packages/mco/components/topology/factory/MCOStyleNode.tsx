@@ -27,7 +27,7 @@ const MCOStyleNodeComponent: React.FC<MCOStyleNodeProps> = ({
   element,
   ...rest
 }) => {
-  const { clusterPairOperationsMap, clusters, onOpenPairModal } =
+  const { clusterPairOperationsMap, clusters, onOpenPairModal, isClusterPairingBlocked } =
     React.useContext(TopologyDataContext);
   const data = element.getData();
   const detailsLevel = useDetailsLevel();
@@ -100,6 +100,9 @@ const MCOStyleNodeComponent: React.FC<MCOStyleNodeProps> = ({
         handlers={handlers}
         otherClusters={otherClusters}
         rootMenuId="cluster-node-menu-root"
+        isPairingBlocked={(targetClusterName) =>
+          isClusterPairingBlocked?.(clusterName, targetClusterName) ?? false
+        }
       />
     </>
   );

@@ -10,8 +10,17 @@ import {
   useVisualizationSetup,
 } from '@odf/shared/topology';
 import { useCustomTranslation } from '@odf/shared/useCustomTranslationHook';
+import { MirrorPeerModel } from '@odf/shared';
+import { referenceForModel } from '@odf/shared/utils';
 import { useK8sWatchResource } from '@openshift-console/dynamic-plugin-sdk';
-import { EmptyState, EmptyStateBody, Title } from '@patternfly/react-core';
+import {
+  Alert,
+  AlertActionCloseButton,
+  AlertVariant,
+  EmptyState,
+  EmptyStateBody,
+  Title,
+} from '@patternfly/react-core';
 import { TopologyIcon } from '@patternfly/react-icons';
 import {
   GraphElement,
@@ -21,11 +30,13 @@ import {
 import { ODFMCO_OPERATOR } from '../../constants';
 import {
   getManagedClusterResourceObj,
+  getDRPolicyResourceObj,
   useProtectedAppsByCluster,
   useDRPoliciesByClusterPair,
   useActiveDROperations,
 } from '../../hooks';
-import { ACMManagedClusterKind } from '../../types';
+import { ACMManagedClusterKind, DRPolicyKind, MirrorPeerKind } from '../../types';
+import { hasConflictingPeering } from '../create-dr-policy/utils/cluster-peering-validators';
 import { CreateDRPolicyModal } from '../create-dr-policy/CreateDRPolicyModal';
 import { TopologyDataContext } from './context/TopologyContext';
 import { mcoTopologyComponentFactory } from './factory/MCOStyleFactory';
@@ -214,6 +225,7 @@ const TopologyEmptyState: React.FC = () => {
 };
 
 const Topology: React.FC = () => {
+  const { t } = useCustomTranslation();
   const controller = useVisualizationSetup({
     componentFactory: mcoTopologyComponentFactory,
   });
@@ -225,10 +237,21 @@ const Topology: React.FC = () => {
   const [pairModalClusters, setPairModalClusters] = React.useState<string[]>(
     []
   );
+  const [pairValidationError, setPairValidationError] = React.useState('');
 
   const [managedClusters, loaded, loadError] = useK8sWatchResource<
     ACMManagedClusterKind[]
   >(getManagedClusterResourceObj());
+
+  const [mirrorPeers] = useK8sWatchResource<MirrorPeerKind[]>({
+    kind: referenceForModel(MirrorPeerModel),
+    isList: true,
+    namespaced: false,
+  });
+
+  const [drPolicies] = useK8sWatchResource<DRPolicyKind[]>(
+    getDRPolicyResourceObj()
+  );
 
   const [clusterAppsMap, appsLoaded, appsLoadError] =
     useProtectedAppsByCluster();
@@ -246,10 +269,32 @@ const Topology: React.FC = () => {
 
   const handleOpenPairModal = React.useCallback(
     (sourceCluster: string, targetCluster: string) => {
-      setPairModalClusters([sourceCluster, targetCluster]);
+      const clusterNames = [sourceCluster, targetCluster];
+      if (hasConflictingPeering(clusterNames, mirrorPeers, drPolicies)) {
+        setPairValidationError(
+          t(
+            'A mirror peer configuration already exists for one or more of the selected clusters, ' +
+              'either from an existing or deleted DR policy. To create a new DR policy with these clusters, ' +
+              'delete any existing mirror peer configurations associated with them and try again.'
+          )
+        );
+        return;
+      }
+      setPairValidationError('');
+      setPairModalClusters(clusterNames);
       setIsPairModalOpen(true);
     },
-    []
+    [mirrorPeers, drPolicies, t]
+  );
+
+  const isClusterPairingBlocked = React.useCallback(
+    (sourceCluster: string, targetCluster: string) =>
+      hasConflictingPeering(
+        [sourceCluster, targetCluster],
+        mirrorPeers,
+        drPolicies
+      ),
+    [mirrorPeers, drPolicies]
   );
 
   const handleClosePairModal = React.useCallback(() => {
@@ -268,6 +313,7 @@ const Topology: React.FC = () => {
       clusterPairPoliciesMap,
       clusterPairOperationsMap,
       onOpenPairModal: handleOpenPairModal,
+      isClusterPairingBlocked,
     };
   }, [
     managedClusters,
@@ -278,6 +324,7 @@ const Topology: React.FC = () => {
     clusterPairPoliciesMap,
     clusterPairOperationsMap,
     handleOpenPairModal,
+    isClusterPairingBlocked,
   ]);
 
   const hasNoClusters =
@@ -287,6 +334,21 @@ const Topology: React.FC = () => {
     <TopologyDataContext.Provider value={topologyDataContextData}>
       <VisualizationProvider controller={controller}>
         <div className="mco-topology" id="mco-topology">
+          {pairValidationError && (
+            <Alert
+              className="pf-v6-u-m-md odf-alert"
+              variant={AlertVariant.danger}
+              title={t('Selected clusters cannot be used to create a DRPolicy.')}
+              isInline
+              actionClose={
+                <AlertActionCloseButton
+                  onClose={() => setPairValidationError('')}
+                />
+              }
+            >
+              {pairValidationError}
+            </Alert>
+          )}
           {hasNoClusters ? (
             <TopologyEmptyState />
           ) : (
