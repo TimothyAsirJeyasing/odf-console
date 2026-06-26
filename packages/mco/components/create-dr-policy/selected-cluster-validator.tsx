@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { pluralize } from '@odf/core/components/utils';
-import { ReplicationType, STORAGE_ID_LABEL_KEY } from '@odf/mco/constants';
+import { STORAGE_ID_LABEL_KEY } from '@odf/mco/constants';
 import { getDRPolicyResourceObj, useACMSafeFetch } from '@odf/mco/hooks';
 import {
   DRPolicyKind,
@@ -10,7 +10,6 @@ import {
 } from '@odf/mco/types';
 import {
   getLabelsFromSearchResult,
-  getReplicationType,
   queryStorageClassesUsingClusterNames,
 } from '@odf/mco/utils';
 import { fireManagedClusterView } from '@odf/mco/utils/managed-cluster-view';
@@ -36,6 +35,10 @@ import {
 } from '@patternfly/react-core';
 import { TimesIcon } from '@patternfly/react-icons';
 import {
+  checkSyncPolicyExists,
+  verifyMirrorPeerExistenceForClusters,
+} from './utils/cluster-peering-validators';
+import {
   DRPolicyAction,
   DRPolicyActionType,
   ManagedClusterInfoType,
@@ -46,38 +49,10 @@ import '../../style.scss';
 const PROVISIONER = 'provisioner';
 const EXTERNAL_DEPLOYMENT_TYPE = 'external';
 
-const checkSyncPolicyExists = (
-  clusters: string[],
-  drPolicies: DRPolicyKind[]
-): boolean =>
-  drPolicies.some((drPolicy) => {
-    const { drClusters } = drPolicy.spec;
-    const isSyncPolicy = getReplicationType(drPolicy) === ReplicationType.SYNC;
-    return (
-      isSyncPolicy && drClusters.every((cluster) => clusters.includes(cluster))
-    );
-  });
-
 const checkClientToODFPeering = (clusters: ManagedClusterInfoType[]): boolean =>
   // ODF cluster to client peering is not supported for DR.
   !!clusters[0]?.odfInfo?.storageClusterInfo?.clientInfo !==
   !!clusters[1]?.odfInfo?.storageClusterInfo?.clientInfo;
-
-const verifyMirrorPeerExistence = (
-  clusters: ManagedClusterInfoType[],
-  mirrorPeers: MirrorPeerKind[]
-): boolean => {
-  const peerNames: string[] = clusters.map(getName);
-  const mirrorPeer: MirrorPeerKind = mirrorPeers.find((mirrorPeer) =>
-    mirrorPeer.spec?.items?.some((item) => peerNames.includes(item.clusterName))
-  );
-  const existingPeerNames =
-    mirrorPeer?.spec?.items?.map((item) => item.clusterName) ?? [];
-  // When one of the chosen clusters is already paired with another cluster, return True.
-  return existingPeerNames.length > 0
-    ? existingPeerNames.sort().join(',') !== peerNames.sort().join(',')
-    : false;
-};
 
 const validateClusterSelection = (
   clusters: ManagedClusterInfoType[],
@@ -132,7 +107,7 @@ const validateClusterSelection = (
       : checkClientToODFPeering(clusters),
     invalidPolicyCreation:
       checkSyncPolicyExists(clusters.map(getName), drPolicies) ||
-      verifyMirrorPeerExistence(clusters, mirrorPeers),
+      verifyMirrorPeerExistenceForClusters(clusters, mirrorPeers),
     // Storage class validation uses ODF/Ceph provisioner allowlists.
     // For third-party storage, replication is externally managed.
     unSupportedStorageClasses: isThirdPartyPath

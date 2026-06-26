@@ -20,6 +20,13 @@ type DefaultContext = {
    * Used by context menu when "Pair cluster" is clicked
    */
   onOpenPairModal?: (sourceCluster: string, targetCluster: string) => void;
+  /**
+   * Returns true when the cluster pair cannot be peered (conflicting MirrorPeer or sync DRPolicy).
+   */
+  isClusterPairingBlocked?: (
+    sourceCluster: string,
+    targetCluster: string
+  ) => boolean;
 };
 
 const defaultContext: DefaultContext = {
@@ -32,6 +39,7 @@ const defaultContext: DefaultContext = {
   clusterPairPoliciesMap: {},
   clusterPairOperationsMap: {},
   onOpenPairModal: undefined,
+  isClusterPairingBlocked: undefined,
 };
 
 export const TopologyDataContext =

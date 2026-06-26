@@ -22,6 +22,7 @@ export interface ClusterContextMenuProps {
   handlers: ClusterContextMenuHandlers;
   otherClusters: ACMManagedClusterKind[];
   rootMenuId?: string;
+  isPairingBlocked?: (targetClusterName: string) => boolean;
 }
 
 /**
@@ -33,6 +34,7 @@ export const ClusterContextMenu: React.FC<ClusterContextMenuProps> = ({
   handlers,
   otherClusters,
   rootMenuId = 'cluster-menu-root',
+  isPairingBlocked,
 }) => {
   const { t } = useCustomTranslation();
   const {
@@ -95,10 +97,12 @@ export const ClusterContextMenu: React.FC<ClusterContextMenuProps> = ({
                   {otherClusters.length > 0 ? (
                     otherClusters.map((cluster) => {
                       const clusterName = getName(cluster);
+                      const pairingBlocked = isPairingBlocked?.(clusterName);
                       return (
                         <MenuItem
                           key={clusterName}
                           itemId={`cluster:${clusterName}`}
+                          isDisabled={pairingBlocked}
                           onClick={() => handlePairWithCluster(clusterName)}
                         >
                           {clusterName}
