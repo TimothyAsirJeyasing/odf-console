@@ -243,13 +243,8 @@ describe.skip('Test drpolicy list page', () => {
       )
     ).toBeInTheDocument();
 
-    // Create button should be disabled
-    expect(screen.getByTestId('create-button')).toBeDisabled();
-
-    // Enter policy name
-    expect(screen.getByText('Policy name')).toBeInTheDocument();
-
-    await userEvent.type(screen.getByTestId('policy-name'), 'policy-1');
+    // Next button should be disabled
+    expect(screen.getByTestId('next-button')).toBeDisabled();
 
     // Managed cluster pairing
     expect(screen.getByText('Connect clusters')).toBeInTheDocument();
@@ -268,14 +263,29 @@ describe.skip('Test drpolicy list page', () => {
     expect(screen.getAllByText('east-1')).toHaveLength(2);
     expect(screen.getAllByText('west-1')).toHaveLength(2);
     expect(screen.getAllByText('ocs-storagecluster').length === 2).toBeTruthy();
-    expect(screen.getByText('Asynchronous')).toBeInTheDocument();
     expect(
       screen.getByText(
         'All disaster recovery prerequisites met for both clusters.'
       )
     ).toBeInTheDocument();
 
-    // Create button should be enabled
+    // Next opens cluster pair configuration
+    expect(screen.getByTestId('next-button')).toBeEnabled();
+    await userEvent.click(screen.getByTestId('next-button'));
+    expect(screen.getByText('Configure cluster pair')).toBeInTheDocument();
+    expect(screen.getByTestId('next-button')).toBeEnabled();
+    await userEvent.click(screen.getByTestId('next-button'));
+
+    // Policy step: enter policy name, replication defaults to async
+    expect(screen.getByText('Policy name')).toBeInTheDocument();
+    expect(screen.getByTestId('next-button')).toBeDisabled();
+    await userEvent.type(screen.getByTestId('policy-name'), 'policy-1');
+    expect(screen.getByText('Asynchronous')).toBeInTheDocument();
+    expect(screen.getByTestId('next-button')).toBeEnabled();
+    await userEvent.click(screen.getByTestId('next-button'));
+
+    // Review and create
+    expect(screen.getByText('Review and create')).toBeInTheDocument();
     expect(screen.getByTestId('create-button')).toBeEnabled();
 
     // Create DRPolicy
@@ -295,12 +305,8 @@ describe.skip('Test drpolicy list page', () => {
   test('Metro-DR policy creation happy path testing', async () => {
     render(<CreateDRPolicy />);
     testcase = 2;
-    // Create button should be disabled
-    expect(screen.getByTestId('create-button')).toBeDisabled();
-
-    // Enter policy name
-    expect(screen.getByText('Policy name')).toBeInTheDocument();
-    await userEvent.type(screen.getByTestId('policy-name'), 'policy-1');
+    // Next button should be disabled
+    expect(screen.getByTestId('next-button')).toBeDisabled();
 
     // Managed cluster pairing
     await userEvent.click(screen.getByLabelText('Select row 0'));
@@ -312,17 +318,26 @@ describe.skip('Test drpolicy list page', () => {
     expect(screen.getAllByText('east-1')).toHaveLength(2);
     expect(screen.getAllByText('east-2')).toHaveLength(2);
     expect(screen.getAllByText('ocs-storagecluster')).toHaveLength(2);
-    expect(screen.getByText('Synchronous')).toBeInTheDocument();
     expect(
       screen.getByText(
         'All disaster recovery prerequisites met for both clusters.'
       )
     ).toBeInTheDocument();
 
-    // Create button should be enabled
-    expect(screen.getByTestId('create-button')).toBeEnabled();
+    // Next through cluster pair configuration
+    expect(screen.getByTestId('next-button')).toBeEnabled();
+    await userEvent.click(screen.getByTestId('next-button'));
+    expect(screen.getByText('Configure cluster pair')).toBeInTheDocument();
+    await userEvent.click(screen.getByTestId('next-button'));
+
+    // Policy step: enter policy name, replication defaults to sync
+    expect(screen.getByText('Policy name')).toBeInTheDocument();
+    await userEvent.type(screen.getByTestId('policy-name'), 'policy-1');
+    expect(screen.getByText('Synchronous')).toBeInTheDocument();
+    await userEvent.click(screen.getByTestId('next-button'));
 
     // Create DRPolicy
+    expect(screen.getByTestId('create-button')).toBeEnabled();
     await userEvent.click(screen.getByTestId('create-button'));
 
     // Validate kube object creation
@@ -362,8 +377,8 @@ describe.skip('Test drpolicy list page', () => {
         'We could not retrieve any information about the managed cluster {{clusterName}}'
       )
     ).toBeInTheDocument();
-    // Create button should be disabled
-    expect(screen.getByTestId('create-button')).toBeDisabled();
+    // Next button should be disabled
+    expect(screen.getByTestId('next-button')).toBeDisabled();
   });
 
   test('More than two cluster selection', async () => {
