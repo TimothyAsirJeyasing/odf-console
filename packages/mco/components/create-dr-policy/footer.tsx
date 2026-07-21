@@ -32,15 +32,6 @@ export const CreateDRPolicyWizardFooter: React.FC<
       )}
       <WizardFooterWrapper>
         <Button
-          data-test="back-button"
-          variant={ButtonVariant.secondary}
-          onClick={goToPrevStep}
-          isDisabled={isClustersStep || isLoading}
-        >
-          {t('Back')}
-        </Button>
-        <Button
-          data-test-id={isReviewStep ? 'create-button' : 'next-button'}
           data-test={isReviewStep ? 'create-button' : 'next-button'}
           variant={ButtonVariant.primary}
           onClick={isReviewStep ? onCreate : goToNextStep}
@@ -51,6 +42,14 @@ export const CreateDRPolicyWizardFooter: React.FC<
           isLoading={isReviewStep && isLoading}
         >
           {isReviewStep ? t('Create') : t('Next')}
+        </Button>
+        <Button
+          data-test="back-button"
+          variant={ButtonVariant.secondary}
+          onClick={goToPrevStep}
+          isDisabled={isClustersStep || isLoading}
+        >
+          {t('Back')}
         </Button>
         <Button
           data-test="cancel-button"

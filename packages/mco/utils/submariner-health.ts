@@ -113,11 +113,16 @@ export const getSubmarinerFailureMessage = (
   addon: SubmarinerAddOnKind | undefined
 ): string | undefined => {
   const conditions = addon?.status?.conditions ?? [];
-  const degradedCondition = conditions.find(
-    (condition) =>
-      /degraded/i.test(condition.type ?? '') &&
+  const degradedTypes = [
+    SUBMARINER_CONDITION_TYPES.CONNECTION_DEGRADED,
+    SUBMARINER_CONDITION_TYPES.ROUTE_AGENT_CONNECTION_DEGRADED,
+    SUBMARINER_CONDITION_TYPES.AGENT_DEGRADED,
+  ];
+  const degradedCondition = degradedTypes
+    .map((type) => findSubmarinerCondition(conditions, type))
+    .find((condition) =>
       isConditionStatus(condition, K8sResourceConditionStatus.True)
-  );
+    );
   return degradedCondition?.message;
 };
 
