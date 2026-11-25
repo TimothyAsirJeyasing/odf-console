@@ -280,7 +280,7 @@ describe('DRStatusPopover Component', () => {
     expect(screen.queryByTestId('cluster-details')).not.toBeInTheDocument();
   });
 
-  it('renders Preparing, Awaiting resync, and Action needed for a failover test', async () => {
+  it('renders Preparing, Awaiting resync, and User action required for a failover test', async () => {
     const { unmount } = render(
       <DRStatusPopover
         disasterRecoveryStatus={{
@@ -322,9 +322,20 @@ describe('DRStatusPopover Component', () => {
       />
     );
     expect(screen.getByTestId('dr-status-button')).toHaveTextContent(
-      'Action needed'
+      'User action required'
     );
     await userEvent.click(screen.getByTestId('dr-status-button'));
+    expect(screen.getByTestId('popover-header')).toHaveTextContent(
+      'Failover test - user action required'
+    );
+    expect(
+      screen.getByText('Test failover requires action')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'The workloads are secured in both clusters. To conclude the test failover session, proceed with Clean up test. If required, you can Convert to real failover to make the failover permanent.'
+      )
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Convert to real failover' })
     ).toBeEnabled();
@@ -368,9 +379,12 @@ describe('DRStatusPopover Component', () => {
       />
     );
 
+    expect(screen.getByTestId('dr-status-button')).toHaveTextContent(
+      'User action required'
+    );
     await userEvent.click(screen.getByTestId('dr-status-button'));
     expect(screen.getByTestId('popover-header')).toHaveTextContent(
-      /Action needed/
+      'User action required'
     );
     expect(screen.getByTestId('popover-description')).toHaveTextContent(
       /finish reverting the failover test/
@@ -395,6 +409,85 @@ describe('DRStatusPopover Component', () => {
     await userEvent.click(screen.getByTestId('dr-status-button'));
     expect(screen.getByTestId('popover-description')).toHaveTextContent(
       /to start relocating/
+    );
+  });
+
+  it('shows the Available condition for WaitForUser while an action is still running', async () => {
+    render(
+      <DRStatusPopover
+        disasterRecoveryStatus={{
+          ...baseStatus,
+          phase: Phase.WaitForUser,
+          progression: Progression.CleaningUp,
+          action: DRActionType.RELOCATE,
+          isDiscoveredApp: true,
+          applicationName: 'discoveredApp',
+          primaryCluster: 'DRClusterA',
+          targetCluster: 'DRClusterB',
+          availableCondition: {
+            status: K8sResourceConditionStatus.False,
+            message: 'Operation Paused - User Intervention Required',
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('dr-status-button')).toHaveTextContent(
+      'User action required'
+    );
+    await userEvent.click(screen.getByTestId('dr-status-button'));
+    expect(screen.getByTestId('popover-header')).toHaveTextContent(
+      'User action required'
+    );
+    expect(screen.getByTestId('popover-description')).toHaveTextContent(
+      'Operation Paused - User Intervention Required'
+    );
+    expect(
+      screen.queryByText(
+        'Go to the cloned repository for discoveredApp on the primary cluster DRClusterA and delete the application.'
+      )
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the Available condition for WaitForUser when the step train is hidden', async () => {
+    const { unmount } = render(
+      <DRStatusPopover
+        disasterRecoveryStatus={{
+          ...baseStatus,
+          phase: Phase.WaitForUser,
+          progression: Progression.Completed,
+          action: DRActionType.FAILOVER,
+          availableCondition: {
+            status: K8sResourceConditionStatus.False,
+            message: 'Operation Paused - User Intervention Required',
+          },
+        }}
+      />
+    );
+
+    await userEvent.click(screen.getByTestId('dr-status-button'));
+    expect(screen.getByTestId('popover-description')).toHaveTextContent(
+      'Operation Paused - User Intervention Required'
+    );
+    expect(screen.getByTestId('popover-description')).not.toHaveTextContent(
+      /to start relocating/
+    );
+    unmount();
+
+    render(
+      <DRStatusPopover
+        disasterRecoveryStatus={{
+          ...baseStatus,
+          phase: Phase.WaitForUser,
+          progression: Progression.Completed,
+          action: DRActionType.FAILOVER,
+        }}
+      />
+    );
+
+    await userEvent.click(screen.getByTestId('dr-status-button'));
+    expect(screen.getByTestId('popover-description')).toHaveTextContent(
+      'User action is required to proceed.'
     );
   });
 
@@ -828,7 +921,7 @@ describe('DRStatusPopover Component', () => {
       },
       {
         label: 'FailedOver cleanup required',
-        expectedStatus: 'WaitOnUserToCleanUp',
+        expectedStatus: 'User action required',
         overrides: {
           phase: Phase.FailedOver,
           progression: 'WaitOnUserToCleanUp',
@@ -864,7 +957,7 @@ describe('DRStatusPopover Component', () => {
       },
       {
         label: 'Relocating cleanup required',
-        expectedStatus: 'WaitOnUserToCleanUp',
+        expectedStatus: 'User action required',
         overrides: {
           phase: Phase.Relocating,
           progression: 'WaitOnUserToCleanUp',
@@ -1159,7 +1252,7 @@ describe('DRStatusPopover Component', () => {
       },
       {
         label: 'WaitForUser with protection error (progression active)',
-        expectedStatus: 'Action needed',
+        expectedStatus: 'User action required',
         overrides: {
           phase: Phase.WaitForUser,
           progression: 'Any',

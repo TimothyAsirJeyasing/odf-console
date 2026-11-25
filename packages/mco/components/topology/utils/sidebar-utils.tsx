@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { DRPlacementControlModel } from '@odf/shared';
 import {
-  BlueInfoCircleIcon,
   GreenCheckCircleIcon,
+  PurpleExclamationCircleIcon,
   RedExclamationCircleIcon,
   YellowExclamationTriangleIcon,
 } from '@odf/shared/status/icons';
@@ -43,7 +43,6 @@ export const getDRNodeStatus = (status: DRStatus): NodeStatus => {
     status === DRStatus.Protecting ||
     status === DRStatus.TestingFailover ||
     status === DRStatus.TestFailoverPaused ||
-    status === DRStatus.TestFailoverActionRequired ||
     status === DRStatus.CleaningUp
   ) {
     return NodeStatus.info;
@@ -54,13 +53,21 @@ export const getDRNodeStatus = (status: DRStatus): NodeStatus => {
     return NodeStatus.warning;
   }
 
-  // Danger states (includes user action required — matches protected-applications)
+  // Manual cleanup is not an error. The node body has no purple status,
+  // so it stays neutral. The decorator carries the purple icon.
+  if (
+    status === DRStatus.WaitOnUserToCleanUp ||
+    status === DRStatus.WaitForUser ||
+    status === DRStatus.TestFailoverActionRequired
+  ) {
+    return NodeStatus.default;
+  }
+
+  // Danger states.
   if (
     status === DRStatus.Critical ||
     status === DRStatus.Unknown ||
-    status === DRStatus.ProtectionError ||
-    status === DRStatus.WaitOnUserToCleanUp ||
-    status === DRStatus.WaitForUser
+    status === DRStatus.ProtectionError
   ) {
     return NodeStatus.danger;
   }
@@ -78,13 +85,24 @@ export const isDRStatusUserActionRequired = isUserActionRequiredUtil;
 
 export const DRStatusIcon: React.FC<{ status: DRStatus }> = ({ status }) => {
   const { t } = useCustomTranslation();
-  // Danger states (includes user action required — matches protected-applications)
+  if (
+    status === DRStatus.WaitOnUserToCleanUp ||
+    status === DRStatus.WaitForUser ||
+    status === DRStatus.TestFailoverActionRequired
+  ) {
+    return (
+      <>
+        <PurpleExclamationCircleIcon />
+        <span>{t('User action required')}</span>
+      </>
+    );
+  }
+
+  // Danger states.
   if (
     status === DRStatus.Critical ||
     status === DRStatus.Unknown ||
-    status === DRStatus.ProtectionError ||
-    status === DRStatus.WaitOnUserToCleanUp ||
-    status === DRStatus.WaitForUser
+    status === DRStatus.ProtectionError
   ) {
     return (
       <>
@@ -105,15 +123,6 @@ export const DRStatusIcon: React.FC<{ status: DRStatus }> = ({ status }) => {
       <>
         <GreenCheckCircleIcon />
         <span>{status}</span>
-      </>
-    );
-  }
-
-  if (status === DRStatus.TestFailoverActionRequired) {
-    return (
-      <>
-        <BlueInfoCircleIcon />
-        <span>{t('Action needed')}</span>
       </>
     );
   }
